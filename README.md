@@ -13,7 +13,7 @@ Atek's networking protocol. Uses the following stack:
 Includes APIs for transmitting HTTP traffic, which is Atek's preferred protocol.
 
 ```js
-import * as AtekNet from '@atek/network'
+import * as AtekNet from '@atek-cloud/network'
 
 await AtekNet.setup()
 
@@ -38,13 +38,32 @@ const {protocol, stream} = await sock.select(['/some-proto/1.0.0'])
 stream.on('data', (chunk) => console.log(chunk.toString())) // => 'Hello there'
 ```
 
-## HTTP tooling
+Glossary for the API:
+
+- `node` A network node identified by a keypair. May (or may not) listen for connections or connect to other nodes. Will identify itself by its public key to all connected nodes.
+- `socket` A connection to a peer.
+- `stream` A stream within a socket (created by the multiplexer)
+- `protocol` The string name of the protocol being used by the stream. Uses the [LibP2P Multistream Select](https://github.com/multiformats/js-multistream-select) format of `/{protocol-name}/{protocol-version}`.
+
+Quick overview:
+
+- `setup()` Must be called before using AtekNet.
+- `createKeypair()` Create a keypair to identify Atek nodes. If you plan to reuse the keypair, you should store it somewhere safe.
+- `new AtekNode(keypair)` Create a new Atek node.
+- `node.listen()` Start listening for incoming connections.
+- `node.setProtocolHandler(protocol, handler)` Add an incoming-requests handler for the given protocol.
+- `node.connect(remotePublicKey) => socket` Create a connection the node identified by the given public key.
+- `socket.select(protocols)` Open a new stream on the socket with one of the protocols provided. If that protocol isn't supported by the remote, will throw.
+- `http.createProxy(node, port)` Create an HTTP 1.1 handler on the given node and route its traffic to `localhost:${port}`.
+- `http.createAgent(node)` Create an agent for initiating HTTP connections over the Atek network.
+
+## HTTP APIs
 
 The module includes tooling to send and receive HTTP traffic. On the receiving side, you create a proxy which routes to a localhost port. On the sending side, you create a NodeJS HTTP agent which will route all requests to `http://{pubkey-base32}.atek.app` over the Atek network.
 
 ```js
 import http from 'http'
-import * as AtekNet from '../dist/index.js'
+import * as AtekNet from '@atek-cloud/network'
 
 await AtekNet.setup()
 
@@ -64,13 +83,10 @@ httpServer.listen(8080)
 const node1 = new AtekNet.AtekNode(AtekNet.createKeypair())
 await node1.listen()
 
-// have our Atek server proxy the '/http/1.1' protocol to our http server
-AtekNet.http.createProxy(node1, 8080)
+AtekNet.http.createProxy(node1, 8080) // proxy the '/http/1.1' protocol to our http server
 
-// create another atek node
+// create another atek node and an http agent
 const node2 = new AtekNet.AtekNode(AtekNet.createKeypair())
-
-// create an HTTP agent on the second node
 const agent = AtekNet.http.createAgent(node2)
 
 // send an HTTP GET request using our agent
