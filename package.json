@@ -1,0 +1,46 @@
+{
+  "name": "atek-protocol",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "test": "ava -s test/*.ts"
+  },
+  "keywords": [],
+  "author": "Paul Frazee <pfrazee@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@hyperswarm/dht": "5.0.0-rc.6",
+    "@types/bl": "^5.0.1",
+    "@types/streamx": "^2.9.1",
+    "agent-base": "^6.0.2",
+    "bl": "^5.0.0",
+    "hi-base32": "^0.5.1",
+    "it-pipe": "^1.1.0",
+    "it-to-stream": "^1.0.0",
+    "libp2p-mplex": "^0.10.4",
+    "multistream-select": "^2.0.1",
+    "pump": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^16.6.2",
+    "@types/node-fetch": "^2.5.12",
+    "ava": "^3.15.0",
+    "node-fetch": "^3.0.0",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.3.5"
+  },
+  "ava": {
+    "extensions": {
+      "ts": "module"
+    },
+    "nonSemVerExperiments": {
+      "configurableModuleFormat": true
+    },
+    "nodeArguments": [
+      "--loader=ts-node/esm"
+    ]
+  }
+}
