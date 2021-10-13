@@ -1,7 +1,7 @@
 # Atek Network
 
 ```
-npm i @atek/network
+npm i @atek-cloud/network
 ```
 
 Atek's networking protocol. Uses the following stack:
