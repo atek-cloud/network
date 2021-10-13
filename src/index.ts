@@ -230,11 +230,12 @@ function initSocket (atekNode: AtekNode, atekSocket: AtekSocket) {
         const selection = await mss.handle(Array.from(atekNode.protocols))
         if (selection) {
           const handler = atekNode.protocolHandlers.get(selection.protocol)
+          const duplexStream = toDuplex(selection.stream)
           if (handler) {
-            handler(toDuplex(selection.stream), atekSocket)
+            handler(duplexStream, atekSocket)
           } else {
-            atekNode.emit('select', selection)
-            atekSocket.emit('select', selection)
+            atekNode.emit('select', {protocol: selection.protocol, stream: duplexStream}, atekSocket)
+            atekSocket.emit('select', {protocol: selection.protocol, stream: duplexStream})
           }
         }
       } catch (e) {

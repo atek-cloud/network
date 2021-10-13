@@ -1,7 +1,7 @@
 {
-  "name": "atek-protocol",
+  "name": "@atek/network",
   "version": "1.0.0",
-  "description": "",
+  "description": "Atek's networking protocol (uses Hyperswarm)",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -42,5 +42,16 @@
     "nodeArguments": [
       "--loader=ts-node/esm"
     ]
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atek-cloud/network.git"
+  },
+  "bugs": {
+    "url": "https://github.com/atek-cloud/network/issues"
+  },
+  "homepage": "https://github.com/atek-cloud/network#readme"
 }

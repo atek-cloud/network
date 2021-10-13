@@ -7,7 +7,6 @@ import { AtekNode } from './index.js'
 import { fromBase32 } from './util.js'
 
 export async function createProxy (atekNode: AtekNode, port: number) {
-  
   await atekNode.listen()
   atekNode.setProtocolHandler('/http/1.1', (stream, atekSocket) => {
     const conn = net.connect({host: 'localhost', port})
