@@ -175,3 +175,7 @@ Creates a handler on the `node` for the `/http/1.1` protocol and proxies all req
 ### `http.createAgent(node: AtekNode): Agent`
 
 Creates a NodeJS "http agent" which routes all requests to `http://{pubkey-base32}.atek.app` over the Atek network.
+
+## License
+
+MIT
