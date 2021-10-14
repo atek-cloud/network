@@ -14,11 +14,11 @@ const httpServer = http.createServer((req, res) => {
 });
 httpServer.listen(8080)
 
-const node1 = new AtekNet.AtekNode(AtekNet.createKeypair())
+const node1 = new AtekNet.Node(AtekNet.createKeypair())
 await node1.listen()
 AtekNet.http.createProxy(node1, 8080)
 
-const node2 = new AtekNet.AtekNode(AtekNet.createKeypair())
+const node2 = new AtekNet.Node(AtekNet.createKeypair())
 const agent = AtekNet.http.createAgent(node2)
 
 http.get(node1.httpUrl, {agent}, (res) => {

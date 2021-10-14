@@ -1,5 +1,7 @@
 # Atek Network
 
+**Work in progress. Not yet published to NPM.**
+
 ```
 npm i @atek-cloud/network
 ```
@@ -18,7 +20,7 @@ import * as AtekNet from '@atek-cloud/network'
 await AtekNet.setup()
 
 // create a new node which listens for connections
-const node1 = new AtekNet.AtekNode(AtekNet.createKeypair())
+const node1 = new AtekNet.Node(AtekNet.createKeypair())
 await node1.listen()
 
 // set a protocol handler
@@ -29,7 +31,7 @@ node1.setProtocolHandler('/some-proto/1.0.0', (stream, socket) => {
 })
 
 // create a second node and connect it to the first node
-const node2 = new AtekNet.AtekNode(AtekNet.createKeypair())
+const node2 = new AtekNet.Node(AtekNet.createKeypair())
 const sock = await node2.connect(node1.keyPair.publicKey)
 
 // select a protocol
@@ -49,7 +51,7 @@ Quick overview:
 
 - `setup()` Must be called before using AtekNet.
 - `createKeypair()` Create a keypair to identify Atek nodes. If you plan to reuse the keypair, you should store it somewhere safe.
-- `new AtekNode(keypair)` Create a new Atek node.
+- `new Node(keypair)` Create a new Atek node.
 - `node.listen()` Start listening for incoming connections.
 - `node.setProtocolHandler(protocol, handler)` Add an incoming-requests handler for the given protocol.
 - `node.connect(remotePublicKey) => socket` Create a connection the node identified by the given public key.
@@ -80,13 +82,13 @@ const httpServer = http.createServer((req, res) => {
 httpServer.listen(8080)
 
 // create our Atek server node
-const node1 = new AtekNet.AtekNode(AtekNet.createKeypair())
+const node1 = new AtekNet.Node(AtekNet.createKeypair())
 await node1.listen()
 
 AtekNet.http.createProxy(node1, 8080) // proxy the '/http/1.1' protocol to our http server
 
 // create another atek node and an http agent
-const node2 = new AtekNet.AtekNode(AtekNet.createKeypair())
+const node2 = new AtekNet.Node(AtekNet.createKeypair())
 const agent = AtekNet.http.createAgent(node2)
 
 // send an HTTP GET request using our agent
@@ -106,7 +108,7 @@ http.get(node1.httpUrl, {agent}, (res) => {
 
 Create a new keypair. A keypair is used to identify Atek nodes.
 
-### `new AtekNode(keyPair: KeyPair, listeningProtocols?: string|string[])`
+### `new Node(keyPair: KeyPair, listeningProtocols?: string|string[])`
 
 Create a new network node using the given keypair. The `listeningProtocols` identifies what protocols this node provides to incoming connections.
 
@@ -182,13 +184,13 @@ Select a protocol for communicating over the socket. If the remote doesn't suppo
 
 ### `atekSocket.on("select", {protocol: string, stream: Duplex})`
 
-Emitted when the remote selects a protocol. Won't be emitted if the parent `AtekNode` has a handler for the protocol.
+Emitted when the remote selects a protocol. Won't be emitted if the parent `Node` has a handler for the protocol.
 
-### `http.createProxy(node: AtekNode, port: number)`
+### `http.createProxy(node: Node, port: number)`
 
 Creates a handler on the `node` for the `/http/1.1` protocol and proxies all requests to `localhost:${port}`. Requests will have the `Atek-Remote-Public-Key` header set to the base32-encoded public key of the connecting node.
 
-### `http.createAgent(node: AtekNode): Agent`
+### `http.createAgent(node: Node): Agent`
 
 Creates a NodeJS "http agent" which routes all requests to `http://{pubkey-base32}.atek.app` over the Atek network.
 

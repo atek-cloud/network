@@ -17,7 +17,7 @@ interface ItDuplex {
 // =
 
 let node: DHT | undefined = undefined
-const activeNodes: AtekNode[] = []
+const activeNodes: Node[] = []
 
 // exported api
 // =
@@ -45,7 +45,7 @@ export interface AtekNodeProtocolHandler {
   (stream: Duplex, socket: AtekSocket): void|Promise<void>
 }
 
-export class AtekNode extends EventEmitter {
+export class Node extends EventEmitter {
   sockets: Map<string, AtekSocket[]> = new Map()
   hyperswarmServer: Server|undefined
   protocols: Set<string> = new Set()
@@ -183,7 +183,7 @@ function findIndex (keyPair: KeyPair) {
   return activeNodes.findIndex(s => Buffer.compare(s.keyPair.publicKey, keyPair.publicKey) === 0)
 }
 
-async function initListener (atekNode: AtekNode) {
+async function initListener (atekNode: Node) {
   if (!node) throw new Error('Cannot listen: Hyperswarm not active')
   if (atekNode.hyperswarmServer) return
   
@@ -203,11 +203,11 @@ async function initListener (atekNode: AtekNode) {
   await atekNode.hyperswarmServer.listen(atekNode.keyPair)
 }
 
-function initInboundSocket (atekNode: AtekNode, atekSocket: AtekSocket) {
+function initInboundSocket (atekNode: Node, atekSocket: AtekSocket) {
   initSocket(atekNode, atekSocket)
 }
 
-async function initOutboundSocket (atekNode: AtekNode, atekSocket: AtekSocket) {
+async function initOutboundSocket (atekNode: Node, atekSocket: AtekSocket) {
   if (!node) throw new Error('Cannot connect: Hyperswarm DHT not active')
   if (atekSocket.hyperswarmSocket) return
 
@@ -221,7 +221,7 @@ async function initOutboundSocket (atekNode: AtekNode, atekSocket: AtekSocket) {
   initSocket(atekNode, atekSocket)
 }
 
-function initSocket (atekNode: AtekNode, atekSocket: AtekSocket) {
+function initSocket (atekNode: Node, atekSocket: AtekSocket) {
   if (!atekSocket.hyperswarmSocket) throw new Error('Hyperswarm Socket not initialized')
   atekSocket.muxer = new Mplex({
     onStream: async (stream: ItDuplex) => {

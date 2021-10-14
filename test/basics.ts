@@ -34,8 +34,8 @@ ava.after(async () => {
 ava('Client to server', async (t) => {
   const keyPair1 = AtekNet.createKeypair()
   const keyPair2 = AtekNet.createKeypair()
-  const node1 = new AtekNet.AtekNode(keyPair1, ['/test/1.0.0', '/test2/2.0.0'])
-  const node2 = new AtekNet.AtekNode(keyPair2, ['/test/1.0.0', '/test2/2.0.0'])
+  const node1 = new AtekNet.Node(keyPair1, ['/test/1.0.0', '/test2/2.0.0'])
+  const node2 = new AtekNet.Node(keyPair2, ['/test/1.0.0', '/test2/2.0.0'])
   await node1.listen()
   const conn = await node2.connect(keyPair1.publicKey)
 
@@ -63,8 +63,8 @@ ava('Client to server', async (t) => {
 ava('Server to server, duplicated connections', async (t) => {
   const keyPair1 = AtekNet.createKeypair()
   const keyPair2 = AtekNet.createKeypair()
-  const node1 = new AtekNet.AtekNode(keyPair1, ['/test/1.0.0', '/test2/2.0.0'])
-  const node2 = new AtekNet.AtekNode(keyPair2, ['/test/1.0.0', '/test2/2.0.0'])
+  const node1 = new AtekNet.Node(keyPair1, ['/test/1.0.0', '/test2/2.0.0'])
+  const node2 = new AtekNet.Node(keyPair2, ['/test/1.0.0', '/test2/2.0.0'])
   await node1.listen()
   await node2.listen()
   const conn1 = await node1.connect(keyPair2.publicKey)
@@ -112,8 +112,8 @@ ava('Server to server, duplicated connections', async (t) => {
 ava('Server to server, deduplicated connections', async (t) => {
   const keyPair1 = AtekNet.createKeypair()
   const keyPair2 = AtekNet.createKeypair()
-  const node1 = new AtekNet.AtekNode(keyPair1, ['/test/1.0.0', '/test2/2.0.0'])
-  const node2 = new AtekNet.AtekNode(keyPair2, ['/test/1.0.0', '/test2/2.0.0'])
+  const node1 = new AtekNet.Node(keyPair1, ['/test/1.0.0', '/test2/2.0.0'])
+  const node2 = new AtekNet.Node(keyPair2, ['/test/1.0.0', '/test2/2.0.0'])
   await node1.listen()
   await node2.listen()
 

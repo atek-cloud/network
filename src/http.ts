@@ -3,10 +3,10 @@ import tls from 'tls'
 import agent from 'agent-base'
 import pump from 'pump'
 import { Transform } from 'streamx'
-import { AtekNode } from './index.js'
+import { Node } from './index.js'
 import { fromBase32 } from './util.js'
 
-export async function createProxy (atekNode: AtekNode, port: number) {
+export async function createProxy (atekNode: Node, port: number) {
   await atekNode.listen()
   atekNode.setProtocolHandler('/http/1.1', (stream, atekSocket) => {
     const conn = net.connect({host: 'localhost', port})
@@ -44,7 +44,7 @@ export async function createProxy (atekNode: AtekNode, port: number) {
   })
 }
 
-export function createAgent (atekNode: AtekNode) {
+export function createAgent (atekNode: Node) {
   return agent(async (req: agent.ClientRequest, opts: agent.RequestOptions): Promise<agent.AgentCallbackReturn> => {
     if (req.host.endsWith('.atek.app')) {
       try {

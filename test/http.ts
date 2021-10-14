@@ -35,7 +35,7 @@ ava.after(async () => {
 
 ava('Client-to-server HTTP requests', async (t) => {
   const serverKeypair = AtekNet.createKeypair()
-  const atekServer = new AtekNet.AtekNode(serverKeypair)
+  const atekServer = new AtekNet.Node(serverKeypair)
   await atekServer.listen()
 
   const httpServer = http.createServer((req, res) => {
@@ -54,7 +54,7 @@ ava('Client-to-server HTTP requests', async (t) => {
 
   for (let i = 0; i < 10; i++) {
     const clientKeypair = AtekNet.createKeypair()
-    const atekClient = new AtekNet.AtekNode(clientKeypair)
+    const atekClient = new AtekNet.Node(clientKeypair)
     const agent = AtekNet.http.createAgent(atekClient)
     for (let j = 0; j < 10; j++) {
       const res = await fetch(`${atekServer.httpUrl}/test/path`, {agent})
@@ -73,7 +73,7 @@ ava('Client-to-server HTTP requests', async (t) => {
 
 ava('Dont let the atek-remote-public-key header get overwritten', async (t) => {
   const serverKeypair = AtekNet.createKeypair()
-  const atekServer = new AtekNet.AtekNode(serverKeypair)
+  const atekServer = new AtekNet.Node(serverKeypair)
   await atekServer.listen()
 
   const httpServer = http.createServer((req, res) => {
@@ -91,7 +91,7 @@ ava('Dont let the atek-remote-public-key header get overwritten', async (t) => {
   AtekNet.http.createProxy(atekServer, 8081)
 
   const clientKeypair = AtekNet.createKeypair()
-  const atekClient = new AtekNet.AtekNode(clientKeypair)
+  const atekClient = new AtekNet.Node(clientKeypair)
   const agent = AtekNet.http.createAgent(atekClient)
 
   const res = await fetch(`${atekServer.httpUrl}/test/path`, {agent, headers: {'atek-remote-public-key': 'FAKE!'}})
@@ -118,8 +118,8 @@ ava('Dont let the atek-remote-public-key header get overwritten', async (t) => {
 ava('Server-to-server HTTP requests', async (t) => {
   const server1Keypair = AtekNet.createKeypair()
   const server2Keypair = AtekNet.createKeypair()
-  const atekServer1 = new AtekNet.AtekNode(server1Keypair)
-  const atekServer2 = new AtekNet.AtekNode(server2Keypair)
+  const atekServer1 = new AtekNet.Node(server1Keypair)
+  const atekServer2 = new AtekNet.Node(server2Keypair)
   await atekServer1.listen()
   await atekServer2.listen()
 
