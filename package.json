@@ -1,6 +1,6 @@
 {
   "name": "@atek-cloud/network",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Atek's networking protocol (uses Hyperswarm)",
   "main": "dist/index.js",
   "type": "module",
