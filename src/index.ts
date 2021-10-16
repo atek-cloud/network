@@ -195,7 +195,7 @@ async function initListener (atekNode: Node) {
     initInboundSocket(atekNode, atekSocket)
     atekNode.addSocket(atekSocket)
     atekNode.emit('connection', atekSocket)
-    hyperswarmSocket.on('close', () => {
+    hyperswarmSocket.once('close', () => {
       atekNode.removeSocket(atekSocket)
     })
   })
@@ -213,9 +213,9 @@ async function initOutboundSocket (atekNode: Node, atekSocket: AtekSocket) {
 
   const hyperswarmSocket = atekSocket.hyperswarmSocket = node.connect(atekSocket.remotePublicKey, {keyPair: atekSocket.keyPair})
   await new Promise((resolve, reject) => {
-    hyperswarmSocket.on('open', resolve)
-    hyperswarmSocket.on('close', resolve)
-    hyperswarmSocket.on('error', reject)
+    hyperswarmSocket.once('open', () => resolve(undefined))
+    hyperswarmSocket.once('close', () => resolve(undefined))
+    hyperswarmSocket.once('error', reject)
   })
 
   initSocket(atekNode, atekSocket)
@@ -223,6 +223,11 @@ async function initOutboundSocket (atekNode: Node, atekSocket: AtekSocket) {
 
 function initSocket (atekNode: Node, atekSocket: AtekSocket) {
   if (!atekSocket.hyperswarmSocket) throw new Error('Hyperswarm Socket not initialized')
+
+  atekSocket.hyperswarmSocket.once('close', () => {
+    atekSocket.emit('close')
+  })
+  
   atekSocket.muxer = new Mplex({
     onStream: async (stream: ItDuplex) => {
       try {
