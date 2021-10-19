@@ -1,7 +1,5 @@
 # Atek Network
 
-**Work in progress. Not yet published to NPM.**
-
 ```
 npm i @atek-cloud/network
 ```
