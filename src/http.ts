@@ -8,9 +8,9 @@ import { fromBase32 } from './util.js'
 
 export async function createProxy (atekNode: Node, port: number) {
   await atekNode.listen()
-  atekNode.setProtocolHandler('/http/1.1', (stream, atekSocket) => {
+  atekNode.setProtocolHandler('http/1.1', (stream, atekSocket) => {
     const conn = net.connect({host: 'localhost', port})
-
+    
     let acc = ''
     let hasAddedHeader = false
     pump(
@@ -49,13 +49,10 @@ export function createAgent (atekNode: Node) {
     if (req.host.endsWith('.atek.app')) {
       try {
         const hostParts = req.host.split('.').filter(Boolean)
-        const conn = await atekNode.connect(fromBase32(hostParts[0]))
-        const select = await conn.select(['/http/1.1'])
+        const conn = await atekNode.connect(fromBase32(hostParts[0]), 'http/1.1')
 
-        // @ts-ignore Duck-typing to match what is expected
-        select.stream.setTimeout = noop
-        // @ts-ignore The streamx.Duplex is compatible with node's Duplex
-        return select.stream
+        // @ts-ignore The hyperswarm socket is compatible with node's Duplex
+        return conn.stream
       } catch (e) {
         console.log('oh fail', e)
         throw e
@@ -67,5 +64,3 @@ export function createAgent (atekNode: Node) {
     }
   })
 }
-
-function noop () {}

@@ -1,17 +1,7 @@
 import EventEmitter from 'events'
 import { Duplex } from 'streamx'
 import DHT, { Server, Socket, KeyPair } from '@hyperswarm/dht'
-import MSS from 'multistream-select'
-import Mplex from 'libp2p-mplex'
-import pipe from 'it-pipe'
-import toStream from 'it-to-stream'
-import bl from 'bl'
 import { toBase32 } from './util.js'
-
-interface ItDuplex {
-  source: AsyncIterable<any>
-  sink: (it: AsyncIterable<any>) => Promise<void>
-}
 
 // globals
 // =
@@ -48,11 +38,9 @@ export interface AtekNodeProtocolHandler {
 export class Node extends EventEmitter {
   sockets: Map<string, AtekSocket[]> = new Map()
   hyperswarmServer: Server|undefined
-  protocols: Set<string> = new Set()
   protocolHandlers: Map<string, AtekNodeProtocolHandler> = new Map()
-  constructor (public keyPair: KeyPair, protocols?: string|string[]) {
+  constructor (public keyPair: KeyPair) {
     super()
-    if (protocols) this.addProtocols(protocols)
   }
 
   get isListening () {
@@ -71,12 +59,13 @@ export class Node extends EventEmitter {
     return `http://${this.httpHostname}`
   }
 
-  async connect (remotePublicKey: Buffer): Promise<AtekSocket> {
-    let atekSocket = this.getSocket(remotePublicKey)
-    if (atekSocket) {
-      return atekSocket
-    }
-    atekSocket = new AtekSocket(remotePublicKey, this.keyPair)
+  async connect (remotePublicKey: Buffer, protocol?: string): Promise<AtekSocket> {
+    const atekSocket = new AtekSocket({
+      remotePublicKey,
+      keyPair: this.keyPair,
+      client: true,
+      protocol
+    })
     await initOutboundSocket(this, atekSocket)
     this.addSocket(atekSocket)
     atekSocket.hyperswarmSocket?.on('close', () => {
@@ -104,32 +93,26 @@ export class Node extends EventEmitter {
     if (i !== -1) activeNodes.splice(i, 1)
   }
 
-  addProtocols (protocols: string|string[]) {
-    for (const p of (Array.isArray(protocols) ? protocols : [protocols])) {
-      this.protocols.add(p)
+  setProtocolHandler (protocol: string|AtekNodeProtocolHandler, handler?: AtekNodeProtocolHandler) {
+    if (typeof protocol === 'string' && handler) {
+      protocol = '*' // TODO: temporary hack until https://github.com/hyperswarm/dht/issues/57 lands
+      this.protocolHandlers.set(protocol, handler)
+    } else if (typeof protocol !== 'string') {
+      this.protocolHandlers.set('*', protocol)
     }
   }
 
-  removeProtocols (protocols: string|string[]) {
-    for (const p of (Array.isArray(protocols) ? protocols : [protocols])) {
-      this.protocols.delete(p)
-    }
-  }
-
-  setProtocolHandler (protocol: string, handler: AtekNodeProtocolHandler) {
-    this.addProtocols(protocol)
-    this.protocolHandlers.set(protocol, handler)
-  }
-
-  removeProtocolHandler (protocol: string) {
-    this.removeProtocols(protocol)
+  removeProtocolHandler (protocol = '*') {
     this.protocolHandlers.delete(protocol)
   }
 
   getSocket (remotePublicKey: Buffer) {
+    return this.getAllSockets(remotePublicKey)[0]
+  }
+
+  getAllSockets (remotePublicKey: Buffer) {
     const remotePublicKeyB32 = toBase32(remotePublicKey)
-    const arr = this.sockets.get(remotePublicKeyB32) || []
-    return arr[0]
+    return this.sockets.get(remotePublicKeyB32) || []
   }
 
   addSocket (atekSocket: AtekSocket) {
@@ -148,32 +131,46 @@ export class Node extends EventEmitter {
 }
 
 export class AtekSocket extends EventEmitter {
+  remotePublicKey: Buffer
+  keyPair: KeyPair
+  client: boolean
+  server: boolean
+  protocol: string|undefined
   hyperswarmSocket: Socket|undefined
-  muxer: Mplex|undefined
-  constructor (public remotePublicKey: Buffer, public keyPair: KeyPair) {
+  // muxer: Mplex|undefined
+  constructor (opts: {remotePublicKey: Buffer, keyPair: KeyPair, client?: boolean, server?: boolean, protocol?: string}) {
     super()
+    this.remotePublicKey = opts.remotePublicKey
+    this.keyPair = opts.keyPair
+    this.client = opts.client || false
+    this.server = opts.server || false
+    this.protocol = opts.protocol || '*'
   }
 
   get remotePublicKeyB32 () {
     return toBase32(this.remotePublicKey)
   }
 
+  get stream () {
+    return this.hyperswarmSocket
+  }
+
   async close () {
     await this.hyperswarmSocket?.close()
-    this.muxer = undefined
+    // this.muxer = undefined
     this.hyperswarmSocket = undefined
   }
   
-  async select (protocols: string[]): Promise<{protocol: string, stream: Duplex}> {
-    if (!this.muxer) throw new Error('Error: this connection is not active')
-    const muxedStream = this.muxer.newStream()
-    const mss = new MSS.Dialer(muxedStream)
-    const res = await mss.select(protocols)
-    return {
-      protocol: res.protocol,
-      stream: toDuplex(res.stream)
-    }
-  }
+  // async select (protocols: string[]): Promise<{protocol: string, stream: Duplex}> {
+  //   if (!this.muxer) throw new Error('Error: this connection is not active')
+  //   const muxedStream = this.muxer.newStream()
+  //   const mss = new MSS.Dialer(muxedStream)
+  //   const res = await mss.select(protocols)
+  //   return {
+  //     protocol: res.protocol,
+  //     stream: toDuplex(res.stream)
+  //   }
+  // }
 }
 
 // internal methods
@@ -190,7 +187,11 @@ async function initListener (atekNode: Node) {
   activeNodes.push(atekNode)
 
   atekNode.hyperswarmServer = node.createServer((hyperswarmSocket: Socket) => {
-    const atekSocket = new AtekSocket(hyperswarmSocket.remotePublicKey, atekNode.keyPair)
+    const atekSocket = new AtekSocket({
+      remotePublicKey: hyperswarmSocket.remotePublicKey,
+      keyPair: atekNode.keyPair,
+      server: true
+    })
     atekSocket.hyperswarmSocket = hyperswarmSocket
     initInboundSocket(atekNode, atekSocket)
     atekNode.addSocket(atekSocket)
@@ -204,7 +205,17 @@ async function initListener (atekNode: Node) {
 }
 
 function initInboundSocket (atekNode: Node, atekSocket: AtekSocket) {
+  if (!atekSocket.hyperswarmSocket) throw new Error('Hyperswarm Socket not initialized')
   initSocket(atekNode, atekSocket)
+
+  const protocol = '*' // TODO: waiting on handshake userData buffer (https://github.com/hyperswarm/dht/issues/57)
+  const handler = atekNode.protocolHandlers.get(protocol) || atekNode.protocolHandlers.get('*')
+  if (handler) {
+    handler(atekSocket.hyperswarmSocket, atekSocket)
+  } else {
+    atekNode.emit('select', {protocol, stream: atekSocket.hyperswarmSocket}, atekSocket)
+    atekSocket.emit('select', {protocol, stream: atekSocket.hyperswarmSocket})
+  }
 }
 
 async function initOutboundSocket (atekNode: Node, atekSocket: AtekSocket) {
@@ -224,36 +235,65 @@ async function initOutboundSocket (atekNode: Node, atekSocket: AtekSocket) {
 function initSocket (atekNode: Node, atekSocket: AtekSocket) {
   if (!atekSocket.hyperswarmSocket) throw new Error('Hyperswarm Socket not initialized')
 
+  // HACK
+  // there are some nodejs stream features that are missing from streamx's Duplex
+  // we're going to see if it's a problem to just noop them
+  // cork and uncork, for instance, are optimizations that we can probably live without
+  // -prf
+  // @ts-ignore Duck-typing to match what is expected
+  atekSocket.hyperswarmSocket.cork = noop
+  // @ts-ignore Duck-typing to match what is expected
+  atekSocket.hyperswarmSocket.uncork = noop
+  // @ts-ignore Duck-typing to match what is expected
+  atekSocket.hyperswarmSocket.setTimeout = noop
+  
+  // HACK
+  // this is a specific issue that's waiting on https://github.com/streamxorg/streamx/pull/46
+  // -prf
+  // @ts-ignore Monkey patchin'
+  atekSocket.hyperswarmSocket._ended = false
+  const _end = atekSocket.hyperswarmSocket.end
+  atekSocket.hyperswarmSocket.end = function (data: any) {
+    _end.call(this, data)
+    // @ts-ignore Monkey patchin'
+    this._ended = true
+  }
+  Object.defineProperty(atekSocket.hyperswarmSocket, 'writable', {
+    get() {
+      return !this._ended && this._writableState !== null ? true : undefined
+    }
+  })
+
   atekSocket.hyperswarmSocket.once('close', () => {
     atekSocket.emit('close')
   })
-  
-  atekSocket.muxer = new Mplex({
-    onStream: async (stream: ItDuplex) => {
-      try {
-        const mss = new MSS.Listener(stream)
-        const selection = await mss.handle(Array.from(atekNode.protocols))
-        if (selection) {
-          const handler = atekNode.protocolHandlers.get(selection.protocol)
-          const duplexStream = toDuplex(selection.stream)
-          if (handler) {
-            handler(duplexStream, atekSocket)
-          } else {
-            atekNode.emit('select', {protocol: selection.protocol, stream: duplexStream}, atekSocket)
-            atekSocket.emit('select', {protocol: selection.protocol, stream: duplexStream})
-          }
-        }
-      } catch (e) {
-        // TODO
-        console.debug('Error handling connection', e)
-        throw e
-      }
-    }
-  })
-  const hyperswarmSocketIter = toIterable(atekSocket.hyperswarmSocket)
-  pipe(hyperswarmSocketIter, atekSocket.muxer, hyperswarmSocketIter)
-}
 
+  // atekSocket.muxer = new Mplex({
+  //   onStream: async (stream: ItDuplex) => {
+  //     try {
+  //       const mss = new MSS.Listener(stream)
+  //       const selection = await mss.handle(Array.from(atekNode.protocols))
+  //       if (selection) {
+  //         const handler = atekNode.protocolHandlers.get(selection.protocol)
+  //         const duplexStream = toDuplex(selection.stream)
+  //         if (handler) {
+  //           handler(duplexStream, atekSocket)
+  //         } else {
+  //           atekNode.emit('select', {protocol: selection.protocol, stream: duplexStream}, atekSocket)
+  //           atekSocket.emit('select', {protocol: selection.protocol, stream: duplexStream})
+  //         }
+  //       }
+  //     } catch (e) {
+  //       // TODO
+  //       console.debug('Error handling connection', e)
+  //       throw e
+  //     }
+  //   }
+  // })
+  // const hyperswarmSocketIter = toIterable(atekSocket.hyperswarmSocket)
+  // pipe(hyperswarmSocketIter, atekSocket.muxer, hyperswarmSocketIter)
+}
+/*
 function toIterable (socket: Socket) {
   return {
     sink: async (source: AsyncIterable<any>) => {
@@ -289,4 +329,6 @@ function toDuplex (it: ItDuplex): Duplex {
       })()
     })
   })
-}
+}*/
+
+function noop () {}

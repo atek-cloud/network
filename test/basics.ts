@@ -34,129 +34,62 @@ ava.after(async () => {
 ava('Client to server', async (t) => {
   const keyPair1 = AtekNet.createKeypair()
   const keyPair2 = AtekNet.createKeypair()
-  const node1 = new AtekNet.Node(keyPair1, ['/test/1.0.0', '/test2/2.0.0'])
-  const node2 = new AtekNet.Node(keyPair2, ['/test/1.0.0', '/test2/2.0.0'])
+  const node1 = new AtekNet.Node(keyPair1)
+  const node2 = new AtekNet.Node(keyPair2)
   await node1.listen()
-  const conn = await node2.connect(keyPair1.publicKey)
+
+  let _r: any
+  const p = new Promise(r => {_r = r})
 
   const serverSelects: string[] = []
   node1.on('select', ({protocol, stream}: {protocol: string, stream: NodeJS.ReadWriteStream}) => {
     serverSelects.push(protocol)
+    if (serverSelects.length === 3) _r()
   })
 
-  const res = await conn.select(['/test2/2.0.0'])
-  t.is(await res.protocol, '/test2/2.0.0')
+  await node2.connect(keyPair1.publicKey, 'test')
+  await node2.connect(keyPair1.publicKey)
+  await node2.connect(keyPair1.publicKey, 'test2')
+  await p
 
-  const res2 = await conn.select(['/test/1.0.0'])
-  t.is(await res2.protocol, '/test/1.0.0')
-
-  const res3 = await conn.select(['/test/1.0.0', '/test2/2.0.0'])
-  t.is(await res3.protocol, '/test/1.0.0')
-
+  // TODO: until hyperswarm implements the userData header in handshakes, protocol selection doesnt work
   t.deepEqual(serverSelects, [
-    '/test2/2.0.0',
-    '/test/1.0.0',
-    '/test/1.0.0'
+    '*',
+    '*',
+    '*'
   ])
 })
 
-ava('Server to server, duplicated connections', async (t) => {
+ava('Server to server', async (t) => {
   const keyPair1 = AtekNet.createKeypair()
   const keyPair2 = AtekNet.createKeypair()
-  const node1 = new AtekNet.Node(keyPair1, ['/test/1.0.0', '/test2/2.0.0'])
-  const node2 = new AtekNet.Node(keyPair2, ['/test/1.0.0', '/test2/2.0.0'])
+  const node1 = new AtekNet.Node(keyPair1)
+  const node2 = new AtekNet.Node(keyPair2)
   await node1.listen()
   await node2.listen()
-  const conn1 = await node1.connect(keyPair2.publicKey)
-  const conn2 = await node2.connect(keyPair1.publicKey)
+
+  let _r: any
+  const p = new Promise(r => {_r = r})
 
   const server1Selects: string[] = []
   node1.on('select', ({protocol, stream}: {protocol: string, stream: NodeJS.ReadWriteStream}) => {
     server1Selects.push(protocol)
+    if (server1Selects.length === 1 && server2Selects.length === 1) _r()
   })
   const server2Selects: string[] = []
   node2.on('select', ({protocol, stream}: {protocol: string, stream: NodeJS.ReadWriteStream}) => {
     server2Selects.push(protocol)
+    if (server1Selects.length === 1 && server2Selects.length === 1) _r()
   })
 
-  const res = await conn1.select(['/test2/2.0.0'])
-  t.is(await res.protocol, '/test2/2.0.0')
-
-  const res2 = await conn1.select(['/test/1.0.0'])
-  t.is(await res2.protocol, '/test/1.0.0')
-
-  const res3 = await conn1.select(['/test/1.0.0', '/test2/2.0.0'])
-  t.is(await res3.protocol, '/test/1.0.0')
-
-  const res4 = await conn2.select(['/test2/2.0.0'])
-  t.is(await res4.protocol, '/test2/2.0.0')
-
-  const res5 = await conn2.select(['/test/1.0.0'])
-  t.is(await res5.protocol, '/test/1.0.0')
-
-  const res6 = await conn2.select(['/test/1.0.0', '/test2/2.0.0'])
-  t.is(await res6.protocol, '/test/1.0.0')
+  await node1.connect(keyPair2.publicKey)
+  await node2.connect(keyPair1.publicKey)
+  await p
 
   t.deepEqual(server1Selects, [
-    '/test2/2.0.0',
-    '/test/1.0.0',
-    '/test/1.0.0'
+    '*',
   ])
   t.deepEqual(server2Selects, [
-    '/test2/2.0.0',
-    '/test/1.0.0',
-    '/test/1.0.0'
-  ])
-})
-
-ava('Server to server, deduplicated connections', async (t) => {
-  const keyPair1 = AtekNet.createKeypair()
-  const keyPair2 = AtekNet.createKeypair()
-  const node1 = new AtekNet.Node(keyPair1, ['/test/1.0.0', '/test2/2.0.0'])
-  const node2 = new AtekNet.Node(keyPair2, ['/test/1.0.0', '/test2/2.0.0'])
-  await node1.listen()
-  await node2.listen()
-
-  const conn1promise = new Promise(r => node2.once('connection', r))
-  const conn1 = await node1.connect(keyPair2.publicKey)
-  await conn1promise // wait for the connection to finish so we can test dedup
-  const conn2 = await node2.connect(keyPair1.publicKey)
-
-  const server1Selects: string[] = []
-  node1.on('select', ({protocol, stream}: {protocol: string, stream: NodeJS.ReadWriteStream}) => {
-    server1Selects.push(protocol)
-  })
-  const server2Selects: string[] = []
-  node2.on('select', ({protocol, stream}: {protocol: string, stream: NodeJS.ReadWriteStream}) => {
-    server2Selects.push(protocol)
-  })
-
-  const res = await conn1.select(['/test2/2.0.0'])
-  t.is(await res.protocol, '/test2/2.0.0')
-
-  const res2 = await conn1.select(['/test/1.0.0'])
-  t.is(await res2.protocol, '/test/1.0.0')
-
-  const res3 = await conn1.select(['/test/1.0.0', '/test2/2.0.0'])
-  t.is(await res3.protocol, '/test/1.0.0')
-
-  const res4 = await conn2.select(['/test2/2.0.0'])
-  t.is(await res4.protocol, '/test2/2.0.0')
-
-  const res5 = await conn2.select(['/test/1.0.0'])
-  t.is(await res5.protocol, '/test/1.0.0')
-
-  const res6 = await conn2.select(['/test/1.0.0', '/test2/2.0.0'])
-  t.is(await res6.protocol, '/test/1.0.0')
-
-  t.deepEqual(server1Selects, [
-    '/test2/2.0.0',
-    '/test/1.0.0',
-    '/test/1.0.0'
-  ])
-  t.deepEqual(server2Selects, [
-    '/test2/2.0.0',
-    '/test/1.0.0',
-    '/test/1.0.0'
+    '*',
   ])
 })
