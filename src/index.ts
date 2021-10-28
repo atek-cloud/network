@@ -17,7 +17,6 @@ export * as http from './http.js'
 export async function setup (opts?: {bootstrap: string[]}): Promise<void> {
   if (node) throw new Error('Hyperswarm DHT already active')
   node = new DHT(opts)
-  await node.ready()
 }
 
 export async function destroy () {
@@ -267,68 +266,6 @@ function initSocket (atekNode: Node, atekSocket: AtekSocket) {
   atekSocket.hyperswarmSocket.once('close', () => {
     atekSocket.emit('close')
   })
-
-  // atekSocket.muxer = new Mplex({
-  //   onStream: async (stream: ItDuplex) => {
-  //     try {
-  //       const mss = new MSS.Listener(stream)
-  //       const selection = await mss.handle(Array.from(atekNode.protocols))
-  //       if (selection) {
-  //         const handler = atekNode.protocolHandlers.get(selection.protocol)
-  //         const duplexStream = toDuplex(selection.stream)
-  //         if (handler) {
-  //           handler(duplexStream, atekSocket)
-  //         } else {
-  //           atekNode.emit('select', {protocol: selection.protocol, stream: duplexStream}, atekSocket)
-  //           atekSocket.emit('select', {protocol: selection.protocol, stream: duplexStream})
-  //         }
-  //       }
-  //     } catch (e) {
-  //       // TODO
-  //       console.debug('Error handling connection', e)
-  //       throw e
-  //     }
-  //   }
-  // })
-  // const hyperswarmSocketIter = toIterable(atekSocket.hyperswarmSocket)
-  // pipe(hyperswarmSocketIter, atekSocket.muxer, hyperswarmSocketIter)
 }
-/*
-function toIterable (socket: Socket) {
-  return {
-    sink: async (source: AsyncIterable<any>) => {
-      try {
-        for await (const chunk of source) {
-          if (bl.isBufferList(chunk)) {
-            socket.write(chunk.slice())
-          } else {
-            socket.write(chunk)
-          }
-        }
-      } catch (err: any) {
-        return socket.destroy(err.code === 'ABORT_ERR' ? null : err)
-      }
-      socket.end()
-    },
-    source: socket
-  }
-}
-
-function toDuplex (it: ItDuplex): Duplex {
-  return toStream.duplex({
-    sink: it.sink,
-    source: pipe(it.source, (source) => {
-      return (async function * () {
-        for await (const chunk of source) {
-          if (bl.isBufferList(chunk)) {
-            yield chunk.slice()
-          } else {
-            yield chunk
-          }
-        }
-      })()
-    })
-  })
-}*/
 
 function noop () {}
